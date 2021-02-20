@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net5.0</TargetFramework>
+		<AssemblyName>Motormoth.Extensions.IO.Pipelines</AssemblyName>
+		<RootNamespace>Motormoth.Extensions.IO.Pipelines</RootNamespace>
+		<Product>Motormoth .NET Extensions</Product>
+		<Authors>Aleksandr Melnik</Authors>
+		<Company>Aleksandr Melnik</Company>
+		<Copyright>2021 Aleksandr Melnik</Copyright>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="System.IO.Pipelines" Version="5.0.1" />
+	</ItemGroup>
+
+</Project>

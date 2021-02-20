@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net5.0</TargetFramework>
+		<AssemblyName>Motormoth.Extensions.Tests</AssemblyName>
+		<RootNamespace>Motormoth.Extensions.Tests</RootNamespace>
+		<Product>Motormoth .NET Extensions</Product>
+		<Authors>Aleksandr Melnik</Authors>
+		<Company>Aleksandr Melnik</Company>
+		<Copyright>2021 Aleksandr Melnik</Copyright>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0" />
+		<PackageReference Include="xunit" Version="2.4.0" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="2.4.0" />
+		<PackageReference Include="coverlet.collector" Version="1.2.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Extensions.IO.Pipelines\Extensions.IO.Pipelines.csproj" />
+		<ProjectReference Include="..\Extensions.IO\Extensions.IO.csproj" />
+	</ItemGroup>
+	
+</Project>

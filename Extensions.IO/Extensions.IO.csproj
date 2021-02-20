@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net5.0</TargetFramework>
+		<AssemblyName>Motormoth.Extensions.IO</AssemblyName>
+		<RootNamespace>Motormoth.Extensions.IO</RootNamespace>
+		<Product>Motormoth .NET Extensions</Product>
+		<Authors>Aleksandr Melnik</Authors>
+		<Company>Aleksandr Melnik</Company>
+		<Copyright>2021 Aleksandr Melnik</Copyright>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+	</PropertyGroup>
+	
+</Project>

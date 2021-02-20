@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net5.0</TargetFramework>
+		<AssemblyName>Motormoth.Extensions.IO</AssemblyName>
+		<RootNamespace>Motormoth.Extensions.IO</RootNamespace>
+		<Product>Motormoth .NET Extensions</Product>
+		<Description>System.IO Extensions</Description>
+		<Authors>Aleksandr Melnik</Authors>
+		<Company>Aleksandr Melnik</Company>
+		<Copyright>2021 Aleksandr Melnik</Copyright>
+		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<RepositoryUrl>https://github.com/motormoth/dotnet-extensions.git</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\LICENSE.txt">
+			<Pack>True</Pack>
+			<PackagePath></PackagePath>
+		</None>
+	</ItemGroup>
+	
+</Project>

@@ -19,26 +19,77 @@ namespace Motormoth.Extensions.Tests.IO
         }
 
         [Fact]
-        public void Ctor_RootPathNull_ThrowsArgumentNullException()
+        public void Ctor_WorkPathNull_ThrowsArgumentNullException()
         {
-            var rootPath = CreateNullPath();
+            var workPath = (string)null;
 
             void testAction()
             {
-                _ = new FileAssembler(rootPath);
+                _ = new FileAssembler(workPath);
             }
 
             _ = Assert.Throws<ArgumentNullException>(testAction);
         }
 
-        private static string CreateNullPath()
+        [Fact]
+        public void CreateWorkspace_NoPrameters_CreatesDirectory()
         {
-            return null;
+            var fileAssembler = CreateDefaultFileAssembler();
+
+            var workspaceId = fileAssembler.CreateWorkspace();
+            var workspacePath = GetWorkspaceDirectoryPath(workspaceId);
+            var workspaceExists = Directory.Exists(workspacePath);
+
+            Assert.True(workspaceExists);
         }
 
-        private static Stream CreateNullStream()
+        [Fact]
+        public void CheckWorkspaceExists_WorkspaceNotExists_ReturnsFalse()
         {
-            return null;
+            var fileAssembler = CreateDefaultFileAssembler();
+            var workspaceId = CreateDefaultWorkspaceId();
+
+            var workspaceExists = fileAssembler.CheckWorkspaceExists(workspaceId);
+
+            Assert.False(workspaceExists);
+        }
+
+        [Fact]
+        public void CheckWorkspaceExists_WorkspaceExists_ReturnsTrue()
+        {
+            var fileAssembler = CreateDefaultFileAssembler();
+
+            var workspaceId = fileAssembler.CreateWorkspace();
+            var workspaceExists = fileAssembler.CheckWorkspaceExists(workspaceId);
+
+            Assert.True(workspaceExists);
+        }
+
+        [Fact]
+        public void DeleteWorkspace_WorkspaceNotExists_ThrowsDirectoryNotFoundException()
+        {
+            var fileAssembler = CreateDefaultFileAssembler();
+            var workspaceId = CreateDefaultWorkspaceId();
+
+            void testAction()
+            {
+                fileAssembler.DeleteWorkspace(workspaceId);
+            }
+
+            _ = Assert.Throws<DirectoryNotFoundException>(testAction);
+        }
+
+        [Fact]
+        public void DeleteWorkspace_WorkspaceExists_DeletesDirectory()
+        {
+            var fileAssembler = CreateDefaultFileAssembler();
+
+            var workspaceId = fileAssembler.CreateWorkspace();
+            var workspacePath = GetWorkspaceDirectoryPath(workspaceId);
+            fileAssembler.DeleteWorkspace(workspaceId);
+            var workspaceNotExists = !Directory.Exists(workspacePath);
+
+            Assert.True(workspaceNotExists);
         }
 
         private static Guid CreateDefaultWorkspaceId()
@@ -46,35 +97,35 @@ namespace Motormoth.Extensions.Tests.IO
             return Guid.Empty;
         }
 
-        private static MemoryStream CreateDefaultFilePart()
+        private static Stream CreateDefaultPartData()
         {
-            return new(Array.Empty<byte>(), writable: false);
+            return new MemoryStream(Array.Empty<byte>(), writable: false);
         }
 
-        private static int CreateDefaultFilePartNumber()
+        private static int CreateDefaultPartNumber()
         {
-            return FileAssembler.MinFilePartNumber;
+            return FileAssembler.PartMinNumber;
         }
 
-        private FileAssembler CreateFileAssembler()
+        private FileAssembler CreateDefaultFileAssembler()
         {
             return new FileAssembler(this.directoryFixture.Path);
         }
 
-        private string GetWorkspacePath(Guid workspaceId)
+        private string GetWorkspaceDirectoryPath(Guid workspaceId)
         {
             return Path.Combine(this.directoryFixture.Path, $"{workspaceId:N}");
         }
 
-        private string GetFilePartPath(Guid workspaceId, int filePartNumber)
+        private string GetPartFilePath(Guid workspaceId, int filePartNumber)
         {
-            return Path.Combine(this.directoryFixture.Path, $"{workspaceId:N}", $"{filePartNumber:D5}.{FileAssembler.FilePartFileExt}");
+            return Path.Combine(this.directoryFixture.Path, $"{workspaceId:N}", $"{filePartNumber:D5}{FileAssembler.PartFileNameExt}");
         }
 
-        private string GetProductPath(Guid workspaceId)
+        private string GetFilePath(Guid workspaceId)
         {
-            const string productName = "product";
-            return Path.Combine(this.directoryFixture.Path, $"{workspaceId:N}", productName);
+            const string testFileName = "testfile";
+            return Path.Combine(this.directoryFixture.Path, $"{workspaceId:N}", testFileName);
         }
     }
 }

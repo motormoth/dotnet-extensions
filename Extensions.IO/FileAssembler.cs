@@ -13,234 +13,303 @@ namespace Motormoth.Extensions.IO
     public sealed class FileAssembler
     {
         /// <summary>
-        /// The minimum possible file part number.
+        /// The minimum possible part number.
         /// </summary>
-        public const int MinFilePartNumber = 1;
+        public const int PartMinNumber = 1;
 
         /// <summary>
-        /// The maximum possible file part number.
+        /// The maximum possible part number.
         /// </summary>
-        public const int MaxFilePartNumber = 20000;
+        public const int PartMaxNumber = 20000;
 
         /// <summary>
-        /// The file part file extension.
+        /// The part file name extension.
         /// </summary>
-        public const string FilePartFileExt = "part";
+        public const string PartFileNameExt = ".part";
 
-        private readonly DirectoryInfo rootDirectory;
+        /// <summary>
+        /// Initializes a new instance of the <see cref="FileAssembler"/> class
+        /// without output directory.
+        /// </summary>
+        /// <param name="workPath">
+        /// The path to a directory in which the file assembler will store
+        /// intermediate data.
+        /// </param>
+        public FileAssembler(string workPath)
+            : this(workPath, null)
+        {
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FileAssembler"/> class.
         /// </summary>
-        /// <param name="rootPath">
-        /// The path to a root directory in which the current file assembler will store intermediate data.
+        /// <param name="workPath">
+        /// The path to a work directory in which the file assembler will store
+        /// intermediate data.
         /// </param>
-        public FileAssembler(string rootPath)
+        /// <param name="outputPath">
+        /// The path to an output directory in which the file assembler will
+        /// store asembled files.
+        /// </param>
+        public FileAssembler(string workPath, string outputPath)
         {
-            if (rootPath is null)
+            if (workPath is null)
             {
-                throw new ArgumentNullException(nameof(rootPath));
+                throw new ArgumentNullException(nameof(workPath));
             }
 
-            this.rootDirectory = new DirectoryInfo(rootPath);
+            WorkPath = workPath;
+            OutputPath = outputPath;
         }
 
         /// <summary>
-        /// Creates a new workspace.
+        /// Gets the path to a work directory of the file assembler.
         /// </summary>
-        /// <returns>The unique identifier of the workspace.</returns>
+        public string WorkPath { get; }
+
+        /// <summary>
+        /// Gets or sets the path to an output directory of the file assembler.
+        /// </summary>
+        public string OutputPath { get; set; }
+
+        /// <summary>
+        /// Creates a workspace.
+        /// </summary>
+        /// <returns>The unique identifier of a workspace.</returns>
         public Guid CreateWorkspace()
         {
             var workspaceId = Guid.NewGuid();
-            var workspacePath = GetWorkspacePath(this.rootDirectory.FullName, workspaceId);
+            var workspacePath = GetWorkspacePath(workspaceId);
             _ = Directory.CreateDirectory(workspacePath);
             return workspaceId;
         }
 
         /// <summary>
-        /// Adds a file part to a workspace.
+        /// Checks if a workspace exists.
         /// </summary>
-        /// <remarks>This method will replace a file part, if it already exists.</remarks>
-        /// <param name="workspaceId">The id of the workspace to which file part will be added.</param>
-        /// <param name="filePart">The stream from which data for the file part will be copied.</param>
-        /// <param name="filePartNumber">
-        /// The index number of the file part. The value must be between <see
-        /// cref="MinFilePartNumber"/> and <see cref="MaxFilePartNumber"/>.
-        /// </param>
-        /// <returns>The value that indicates whether the workspace was found or not.</returns>
-        public bool AddFilePart(Guid workspaceId, Stream filePart, int filePartNumber)
-        {
-            CheckAddFilePartParameters(filePart, filePartNumber);
-
-            var workspacePath = GetWorkspacePath(this.rootDirectory.FullName, workspaceId);
-            if (Directory.Exists(workspacePath))
-            {
-                var filePartPath = GetFilePartPath(workspacePath, filePartNumber);
-                using var filePartFileStream = File.Open(filePartPath,
-                    FileMode.Create, FileAccess.Write);
-                filePart.CopyTo(filePartFileStream);
-                return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Asynchronously adds a file part to a workspace.
-        /// </summary>
-        /// <remarks>This method will replace a file part, if it already exists.</remarks>
-        /// <param name="workspaceId">The id of the workspace to which file part will be added.</param>
-        /// <param name="filePart">The stream from which data for the file part will be copied.</param>
-        /// <param name="filePartNumber">
-        /// The index number of the file part. The value must be between <see
-        /// cref="MinFilePartNumber"/> and <see cref="MaxFilePartNumber"/>.
-        /// </param>
-        /// <param name="cancellationToken">
-        /// The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.
-        /// </param>
+        /// <param name="workspaceId">The id of a workspace to check.</param>
         /// <returns>
-        /// A task that represents the asynchronous copy operation. The result value indicates
-        /// whether the workspace was found or not.
+        /// The value that indicates whether a workspace exists or not.
         /// </returns>
-        public async Task<bool> AddFilePartAsync(Guid workspaceId, Stream filePart, int filePartNumber,
-            CancellationToken cancellationToken = default)
+        public bool CheckWorkspaceExists(Guid workspaceId)
         {
-            CheckAddFilePartParameters(filePart, filePartNumber);
-
-            var workspacePath = GetWorkspacePath(this.rootDirectory.FullName, workspaceId);
-            if (Directory.Exists(workspacePath))
-            {
-                var filePartPath = GetFilePartPath(workspacePath, filePartNumber);
-                await using var filePartFileStream = File.Open(filePartPath,
-                    FileMode.Create, FileAccess.Write);
-                await filePart.CopyToAsync(filePartFileStream, cancellationToken);
-                return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Assembles a file from a workspace.
-        /// </summary>
-        /// <param name="workspaceId">The id of the workspace from which file will be assembled.</param>
-        /// <param name="productPath">The path at which assembled file will be created.</param>
-        /// <returns>The value that indicates whether the workspace was found or not.</returns>
-        public bool AssembleFile(Guid workspaceId, string productPath)
-        {
-            CheckAssembleFileParameters(productPath);
-
-            var workspacePath = GetWorkspacePath(this.rootDirectory.FullName, workspaceId);
-            if (Directory.Exists(workspacePath))
-            {
-                var filePartPaths = Directory.GetFiles(workspacePath, $"*.{FilePartFileExt}");
-                Array.Sort(filePartPaths, StringComparer.InvariantCultureIgnoreCase);
-                using var productFileStream = File.Open(productPath,
-                    FileMode.OpenOrCreate, FileAccess.Write);
-                foreach (var filePartPath in filePartPaths)
-                {
-                    using var filePartFileStream = File.Open(filePartPath,
-                        FileMode.Open, FileAccess.Read);
-                    filePartFileStream.CopyTo(productFileStream);
-                }
-
-                return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Asynchronously assembles a file from a workspace.
-        /// </summary>
-        /// <param name="workspaceId">The id of the workspace from which file will be assembled.</param>
-        /// <param name="productPath">The path at which assembled file will be created.</param>
-        /// <param name="cancellationToken">
-        /// The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.
-        /// </param>
-        /// <returns>
-        /// A task that represents the asynchronous assemble operation. The result value indicates
-        /// whether the workspace was found or not.
-        /// </returns>
-        public async Task<bool> AssembleFileAsync(Guid workspaceId, string productPath,
-            CancellationToken cancellationToken = default)
-        {
-            CheckAssembleFileParameters(productPath);
-
-            var workspacePath = GetWorkspacePath(this.rootDirectory.FullName, workspaceId);
-            if (Directory.Exists(workspacePath))
-            {
-                var filePartPaths = Directory.GetFiles(workspacePath, $"*.{FilePartFileExt}");
-                Array.Sort(filePartPaths, StringComparer.InvariantCultureIgnoreCase);
-                await using var productFileStream = File.Open(productPath,
-                    FileMode.OpenOrCreate, FileAccess.Write);
-                foreach (var filePartPath in filePartPaths)
-                {
-                    await using var filePartFileStream = File.Open(filePartPath,
-                        FileMode.Open, FileAccess.Read);
-                    await filePartFileStream.CopyToAsync(productFileStream, cancellationToken);
-                }
-
-                return true;
-            }
-
-            return false;
+            var workspacePath = GetWorkspacePath(workspaceId);
+            return Directory.Exists(workspacePath);
         }
 
         /// <summary>
         /// Deletes a workspace.
         /// </summary>
-        /// <param name="workspaceId">The id of the workspace to delete.</param>
-        /// <returns>The value that indicates whether the workspace was found or not.</returns>
-        public bool DeleteWorkspace(Guid workspaceId)
+        /// <param name="workspaceId">The id of a workspace to delete.</param>
+        public void DeleteWorkspace(Guid workspaceId)
         {
-            var workspacePath = GetWorkspacePath(this.rootDirectory.FullName, workspaceId);
-            if (Directory.Exists(workspacePath))
-            {
-                try
-                {
-                    Directory.Delete(workspacePath, recursive: true);
-                }
-                catch (DirectoryNotFoundException)
-                {
-                    // ignore exception if directory was deleted before Delete called
-                }
-
-                return true;
-            }
-
-            return false;
+            var workspacePath = GetWorkspacePath(workspaceId);
+            Directory.Delete(workspacePath, recursive: true);
         }
 
-        private static void CheckAddFilePartParameters(Stream filePart, int filePartNumber)
+        /// <summary>
+        /// Puts a part into a workspace.
+        /// </summary>
+        /// <remarks>This method will replace a part, if it already exists.</remarks>
+        /// <param name="workspaceId">
+        /// The id of a workspace to which part will be added.
+        /// </param>
+        /// <param name="partData">
+        /// The stream from which part data will be copied.
+        /// </param>
+        /// <param name="partNumber">
+        /// The index number of a part. The value must be between <see
+        /// cref="PartMinNumber"/> and <see cref="PartMaxNumber"/>.
+        /// </param>
+        public void PutPart(Guid workspaceId,
+            Stream partData, int partNumber)
         {
-            if (filePartNumber < MinFilePartNumber || filePartNumber > MaxFilePartNumber)
+            CheckPutPartParameters(partData, partNumber);
+
+            var partPath = GetPartPath(workspaceId, partNumber);
+            using var partStream = File.Open(partPath,
+                FileMode.Create, FileAccess.Write);
+            partData.CopyTo(partStream);
+        }
+
+        /// <summary>
+        /// Asynchronously puts a part into a workspace.
+        /// </summary>
+        /// <remarks>This method will replace a part, if it already exists.</remarks>
+        /// <param name="workspaceId">
+        /// The id of a workspace to which part will be added.
+        /// </param>
+        /// <param name="partData">
+        /// The stream from which part data will be copied.
+        /// </param>
+        /// <param name="partNumber">
+        /// The index number of a part. The value must be between <see
+        /// cref="PartMinNumber"/> and <see cref="PartMaxNumber"/>.
+        /// </param>
+        /// <param name="cancellationToken">
+        /// The token to monitor for cancellation requests. The default value is
+        /// <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        public async Task PutPartAsync(Guid workspaceId,
+            Stream partData, int partNumber,
+            CancellationToken cancellationToken = default)
+        {
+            CheckPutPartParameters(partData, partNumber);
+
+            var partPath = GetPartPath(workspaceId, partNumber);
+            await using var partStream = File.Open(partPath,
+                FileMode.Create, FileAccess.Write);
+            await partData.CopyToAsync(partStream, cancellationToken);
+        }
+
+        /// <summary>
+        /// Assembles a file from a workspace.
+        /// </summary>
+        /// <remarks>
+        /// If the <see cref="OutputPath"/> property is not set, this method
+        /// will throw <see cref="InvalidOperationException"/>.
+        /// </remarks>
+        /// <param name="workspaceId">
+        /// The id of a workspace from which a file will be assembled.
+        /// </param>
+        public void Assemble(Guid workspaceId)
+        {
+            if (OutputPath is null)
             {
-                throw new ArgumentOutOfRangeException(nameof(filePartNumber));
+                throw new InvalidOperationException();
             }
 
-            if (filePart is null)
+            var filePath = GetFilePath(workspaceId);
+            AssembleAt(workspaceId, filePath);
+        }
+
+        /// <summary>
+        /// Asynchronously assembles a file from a workspace.
+        /// </summary>
+        /// <remarks>
+        /// If <see cref="OutputPath"/> property is not set, this method will
+        /// throw <see cref="InvalidOperationException"/>.
+        /// </remarks>
+        /// <param name="workspaceId">
+        /// The id of a workspace from which a file will be assembled.
+        /// </param>
+        /// <param name="cancellationToken">
+        /// The token to monitor for cancellation requests. The default value is
+        /// <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        public async Task AssembleAsync(Guid workspaceId,
+            CancellationToken cancellationToken = default)
+        {
+            if (OutputPath is null)
             {
-                throw new ArgumentNullException(nameof(filePart));
+                throw new InvalidOperationException();
+            }
+
+            var filePath = GetFilePath(workspaceId);
+            await AssembleAtAsync(workspaceId, filePath, cancellationToken);
+        }
+
+        /// <summary>
+        /// Assembles a file from a workspace.
+        /// </summary>
+        /// <param name="workspaceId">
+        /// The id of a workspace from which a file will be assembled.
+        /// </param>
+        /// <param name="filePath">
+        /// The path at which an assembled file will be created.
+        /// </param>
+        public void AssembleAt(Guid workspaceId,
+            string filePath)
+        {
+            CheckAssembleAtParameters(filePath);
+
+            var partPaths = GetPartPaths(workspaceId);
+            using var fileStream = File.Open(filePath,
+                FileMode.OpenOrCreate, FileAccess.Write);
+            foreach (var partPath in partPaths)
+            {
+                using var partStream = File.Open(partPath,
+                    FileMode.Open, FileAccess.Read);
+                partStream.CopyTo(fileStream);
             }
         }
 
-        private static void CheckAssembleFileParameters(string productPath)
+        /// <summary>
+        /// Asynchronously assembles a file from a workspace.
+        /// </summary>
+        /// <param name="workspaceId">
+        /// The id of a workspace from which a file will be assembled.
+        /// </param>
+        /// <param name="filePath">
+        /// The path at which an assembled file will be created.
+        /// </param>
+        /// <param name="cancellationToken">
+        /// The token to monitor for cancellation requests. The default value is
+        /// <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        public async Task AssembleAtAsync(Guid workspaceId,
+            string filePath,
+            CancellationToken cancellationToken = default)
         {
-            if (productPath is null)
+            CheckAssembleAtParameters(filePath);
+
+            var partPaths = GetPartPaths(workspaceId);
+            await using var fileStream = File.Open(filePath,
+                FileMode.OpenOrCreate, FileAccess.Write);
+            foreach (var partPath in partPaths)
             {
-                throw new ArgumentNullException(nameof(productPath));
+                await using var partStream = File.Open(partPath,
+                    FileMode.Open, FileAccess.Read);
+                await partStream.CopyToAsync(fileStream, cancellationToken);
             }
         }
 
-        private static string GetWorkspacePath(string rootPath, Guid workspaceId)
+        private static void CheckPutPartParameters(Stream partData, int partNumber)
         {
-            return Path.Combine(rootPath, $"{workspaceId:N}");
+            if (partNumber < PartMinNumber || partNumber > PartMaxNumber)
+            {
+                throw new ArgumentOutOfRangeException(nameof(partNumber));
+            }
+
+            if (partData is null)
+            {
+                throw new ArgumentNullException(nameof(partData));
+            }
         }
 
-        private static string GetFilePartPath(string workspacePath, int filePartNumber)
+        private static void CheckAssembleAtParameters(string filePath)
         {
-            return Path.Combine(workspacePath, $"{filePartNumber:D5}.{FilePartFileExt}");
+            if (filePath is null)
+            {
+                throw new ArgumentNullException(nameof(filePath));
+            }
+        }
+
+        private string[] GetPartPaths(Guid workspaceId)
+        {
+            var workspacePath = GetWorkspacePath(workspaceId);
+            var partPaths = Directory.GetFiles(workspacePath, $"*{PartFileNameExt}");
+            Array.Sort(partPaths, StringComparer.InvariantCulture);
+            return partPaths;
+        }
+
+        private string GetPartPath(Guid workspaceId, int partNumber)
+        {
+            var workspacePath = GetWorkspacePath(workspaceId);
+            return Path.Join(workspacePath, $"{partNumber:D5}{PartFileNameExt}");
+        }
+
+        private string GetWorkspacePath(Guid workspaceId)
+        {
+            return Path.Join(WorkPath, $"{workspaceId:N}");
+        }
+
+        private string GetFilePath(Guid workspaceId)
+        {
+            return Path.Join(OutputPath, $"{workspaceId:N}");
         }
     }
 }
